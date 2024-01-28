@@ -1,0 +1,161 @@
+
+    Паттерн 19: КОМПАНОВЩИК:
+----------------------------
+    --  Описание паттерна:
+    ----------------------
+    (00) Получение результата запрашивая его с ветки дерева
+         как если бы результат бы получен агрегацией с каждого
+         листа этого дерева
+
+    (01) Рекурсивное дерево,
+         состоящее из Листьев и Композитов,
+         являющихся хранилищами для Листьев
+         или для других Композитов.
+
+         Решение для представления алгоритмов сквозного прохода
+         ветвей (например расчет суммы)
+         с помощью рекурсивного метода ОДИНАКОВОГО
+         и для Композитов и для Листьев и являющегося следствием
+         имплементации одного и того же интерфейса.
+
+         Помимо вычисления (агригирования)
+         возможно и суммирование контента
+         (например хтмл).
+
+    (02) Компанует элементы в древовидную структуру,
+         представляя их в виде иерархии.
+         Позволяет клиенту одинаково обращаться
+         как к отдельному объекту,
+         так и к целому поддереву
+    ---
+        В реальности решение с разделением на Листья и Композиты
+        не сильно подходит для того же хтмл кода,
+        так как там элементом структуры является Тэг,
+        который является одновременно и Листом и Композитом
+        (любой тег может иметь ТЕКСТ - то есть быть листом,
+        и иметь вложенные теги, - то есть быть композитом).
+        (не будет отдельно взятого Leaf, будет только
+        Composite - который при наличии 0 элементов в себе будет
+        возвращать свой контент -- так рекурсия и будет
+        останавливаться).
+
+    --  Ситуация создающая проблему:
+    --------------------------------
+    Есть склад
+    внутри склада коробки
+    в каких то коробках есть товары и другие коробки
+    надо оценить стоимость отдельно взятой коробки и всего
+    что внутри неё находится.
+
+    --  Предлагаемое решение:
+    -------------------------
+    Делим абстракции на:
+        1. Коробки (Композиты)
+        2. Товары
+
+    и тем и другим задаем метод calculatePrice()
+    но для коробок этот метод будет рекурсивным
+    и будес считать цены всего что внутри,
+    а для товаров он будет просто возвращать цену.
+
+    --  Итоговый вариант кода:
+    --------------------------
+    //
+    // -- общий и для коробок и для товаров интерфейс:
+    interface CanCalculatePrice
+    {
+        double calculatePrice();
+    }
+
+    //
+    // -- линейка продуктов:
+    abstract class Product implements CanCalculatePrice
+    {
+        String title;
+        double price;
+        Product(String title, double price)
+        {
+            this.title = title; this.price = price;
+        }
+        abstract public double calculatePrice();
+    }
+    class VideoGame extends Product
+    {
+        VideoGame(String title, double price)
+        {
+            super(title,price);
+        }
+        @Override
+        public double calculatePrice()
+        {
+            return price;
+        }
+    }
+    class Book extends Product
+    {
+        Book(String title, double price)
+        {
+            super(title,price);
+        }
+        @Override
+        public double calculatePrice()
+        {
+            return price;
+        }
+    }
+
+    //
+    // -- коробки:
+    class CompositeBox implements CanCalculatePrice
+    {
+        List<CanCalculatePrice> inBox = new ArrayList<>();
+        CompositeBox(CanCalculatePrice... goods)
+        {
+            inBox.addAll(
+                Arrays.asList(goods)
+            );
+        }
+        @Override
+        public double calculatePrice()
+        {
+            return inBox.stream()       <- технически тут рекурсия - концом которой будет Product
+                    .mapToDouble(CanCalculatePrice::calculatePrice)
+                    .sum();
+        }
+    }
+
+    //
+    // -- сборщик заказа:
+    class DeliveryService
+    {
+        CanCalculatePrice rootBox;
+        void setupOrder(CanCalculatePrice... goods)
+        {
+            rootBox = new CompositeBox(goods);         <- все изначально в коробке
+        }
+        double calculatePrice()
+        {
+            return box.calculatePrice();               <- рекурсивное вычисление цены
+        }
+    }
+
+    //
+    // -- запаковка:
+    DeliveryService ds = new DeliveryService();
+    ds.setupOrder(
+        new CompositeBox(
+            new Book("1",100),
+            new VideoGame("2",200)
+        ),
+        new CompositeBox(
+            new Book("3",300)
+        ),
+        new CompositeBox(
+            new CompositeBox(
+                new VideoGame("4",400),
+                new VideoGame("5",500)
+            ),
+            new Book("6",600)
+        )
+    );
+    System.out.println(ds.calculatePrice());

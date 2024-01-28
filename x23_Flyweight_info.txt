@@ -1,0 +1,100 @@
+
+    Паттерн 23: FLYWEIGHT:
+--------------------------
+    --  Описание паттерна:
+    ----------------------
+    Благодаря совместному использованию,
+    поддерживает эффективную работу
+    с большим количеством объектов.
+
+    Паттерн должен использоваться
+    только лишь для оптимизации,
+    так как сильно усложняет имеющийся
+    код (и должен создаваться
+    на базе имеющегося кода, ну и сильно
+    поможет ему начать работать создание
+    объектов с помощью фабрики изначально).
+
+    возможен вариант
+    с ссылками на объекты в принципе:
+    поле имеет не данные - а ссылку на другой объект
+    и этот другой объект может быть разделяемым
+    с другими объектами.
+
+    --  Ситуация создающая проблему:
+    --------------------------------
+    Есть класс Книга
+    в ней есть строковые поля
+    каждое из которых занимает данные,
+    по факту размещается около 10_000_000
+    таких объектов - память забивается
+    все тормозит тупит,
+    хотя в итоге некоторые поля буквально
+    повторяются.
+
+    --  Предлагаемое решение:
+    -------------------------
+    повторяющиеся поля изолируем
+    и представляем в виде отдельного объекта.
+    теперь объект вместо хранения всех полей
+    хранит только изменяемые, а не изменяемые
+    хранятся в кеше.
+
+    --  Итоговый вариант кода:
+    --------------------------
+
+    было:
+    class HeavyBook
+    {
+        String one;
+        String two;
+        String repetitiveOne;
+        String repetitiveTwo;
+        HeavyBook(String one, String two, String repOne, String repTwo){..}
+        String getOne(){return one;}
+        String getTwo(){return two;}
+        String getRepetitiveOne(){return repetitiveOne;}
+        String getRepetitiveTwo(){return repetitiveTwo;}
+    }
+
+    стало:
+    class RepetitiveBookFields
+    {
+        String repetitiveOne;
+        String repetitiveTwo;
+    }
+    class LightBook
+    {
+        String one;
+        String two;
+        RepetitiveBookFields repetitiveFields;
+        LightBook(Strong one, String two, RepetitiveBookFields repetitiveFields){..}
+        String getOne(){return one;}
+        String getTwo(){return two;}
+        String getRepetitiveOne(){return repetitiveFields.repetitiveOne;}
+        String getRepetitiveTwo(){return repetitiveFields.repetitiveTwo;}
+    }
+    class LightBookFactory          <- ктото должен обеспечивать кеширование, обычно это фабрика
+    {
+        ArrayList<RepetitiveBookFields> existingRepetitiveFields = new ArrayList<>();
+
+        LightBook createLightBook(String one, String two, String repetitiveOne, String repetitiveTwo)
+        {
+            RepetitiveBookFields rbf = null;
+            for(var exemplar : existingRepetitiveFields)       <- просмотр кеша и использование его
+            {
+                if(exemplar.repetitiveOne == repetitiveOne)
+                if(exemplar.repetitiveTwo == repetitiveTwo)
+                {
+                    rbf = exemplar;
+                }
+            }
+            // <- ну чтож в кеше ничего нету, значит по старинке будем создаваться
+            if(rbf == null)
+            {
+                rbf = new RepetitiveFields(repOne,repTwo);
+                existingRepetitiveFields.add(rbf);
+            }
+            return new LightBook(one, two, rbf);
+        }
+    }

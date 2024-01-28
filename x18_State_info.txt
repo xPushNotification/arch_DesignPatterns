@@ -1,0 +1,108 @@
+
+    Паттерн 18: СОСТОЯНИЕ:
+--------------------------
+    --  Описание паттерна:
+    ----------------------
+    Позволяет объекту изменять свое поведение
+    в зависимости от внутреннего состояния.
+
+    Паттерн похож на паттерн Стратегия:
+    1. есть объект исполнитель
+    2. есть методы в этом объекте,
+       а их поведение зависит от объекта исполнителя
+
+    однако в отличае от стратегии,
+    здесь идет учет именно самого состояния,
+    то есть по сути оно является именованым
+
+    по сути комбинация DependencyInjection с учтенным состоянием
+    if(State.getPowerState() == POWER_ON)                   <- состояние учтено
+    {actionPerformer = new PowerOnActionPerformer();        <- dependency injection
+    } else {actionPerformer = new PowerOffActionPerformer();}
+
+    --  Ситуация создающая проблему:
+    --------------------------------
+    Есть телефон сотовый
+    у него две кнопки
+    "home" / "power"
+
+    и методы:
+    нажать на кнопку "home"
+    нажать на кнопку "power"
+
+    однако работа этих кнопок зависит от того
+    что сейчас происходит с телефоном,
+    так при отключеном телефоне кнопка "home"
+    не работает, а при включеном кнопка "power"
+    его отключает.
+
+    как учитывать состояние?
+
+    --  Предлагаемое решение:
+    -------------------------
+    делаем поведение на нажатие исходя из состояний,
+    вводим состояния:
+    1. телефон выключен
+    2. телефон включен
+
+    и привязываем реакцию на нажатия кнопок уже к этим
+    состояниям,
+    мы не будем заменять состояние целиком,
+    мы сохраним все возможные состояния в самом объекте,
+    чтобы ими было проще оперировать.
+
+    Основная фича здесь - это именно наличие состояния чего либо
+    и реакция на изменение состояния - изменение интерфейса
+    взаимодействия.
+
+    --  Итоговый вариант кода:
+    --------------------------
+    interface StatePowerOnOff
+    {
+        void pushPowerButton();
+        void pushHomeButton();
+    }
+    // <- ось состояний:
+    enum PowerMode
+    {
+        POWER_IS_ON, POWER_IS_OFF
+    }
+
+    // <- здесь все очень сильно похоже на паттерн "Стратегия"
+    class PowerIsOnState implements StatePowerOnOff
+    {
+        void pushPowerButton(){System.out.println("power is pressed: when power is on");}
+        void pushHomeButton(){System.out.println("home is pressed: when power is on");}
+    }
+    class PowerIsOffState implements StatePowerOnOff
+    {
+        void pushPowerButton(){System.out.println("power is pressed: when power is off");}
+        void pushHomeButton(){System.out.println("home is pressed: when power is off");}
+    }
+
+    class Phone
+    {
+        PowerMode powerMode = PowerMode.POWER_IS_OFF;                                   <- текущий режим
+        HashMap<PowerMode, StatePowerOnOff> statesPowerOnOff = new HashMap<>();         <- доступные режимы
+        StatePowerOnOff currentPowerOnOffState = statesPowerOnOff.get(powerMode);       <- текущий активный режим
+
+        void switchMode(PowerMode newMode)
+        {
+            powerMode = newMode;
+            currentPowerOnOffState = statesPowerOnOff.get(powerMode);
+        }
+
+        void doPushButtonPower()
+        {
+            currentPowerOnOffState.pushPowerButton();
+
+            // <- это может происходить и в классе состояния - если туда передать ссылку на пользователя
+            //    но тут так проще воспринимается (это собственно и "фишка" паттерна)
+            if(powerMode == PowerMode.POWER_IS_ON) switchMode(PowerMode.POWER_IS_OFF);
+            else switchMode(PowerMode.POWER_IS_ON);
+        }
+        void doPushHomeButton()
+        {
+            currentPowerOnOffState.pushHomeButton();
+        }
+    }

@@ -1,0 +1,141 @@
+
+    Паттерн 13: PROTOTYPE:
+--------------------------
+    --  Описание паттерна:
+    ----------------------
+    Определяет несколько видов объектов,
+    чтобы при создании использвоать объект-прототип
+    и создает новые объекты,
+    копируя прототип.
+
+    По сути представляет собою конструктор на базе
+    типа объекта + метод clone
+    почему не ограничиться только конструктором на базе типа?
+    может быть ситуация когда надо создать целый массив объектов.
+    Массив будет типа супер класса,
+    а наполнение объекты суб класса который будет меняться динамически,
+    с подразумевающимся заполнением в цикле
+    -- плюс --
+    реестр прототипов на базе хешмапа
+    enum.type + супер класс для прототипа
+
+    прототип может быть настроен как на shallow так и на deep
+    копирование в зависимости от реализации - это
+    не является частью паттерна.
+
+    --  Ситуация создающая проблему:
+    --------------------------------
+    всего есть две проблемы:
+        клонирование
+        нотация клонирования в массиве
+        база заготовок клонирования
+
+    (-1-) Первая часть проблемы - клонирование
+    (решается не паттерном - а конструктором с обьектом):
+
+    Car one = new Car();
+        one.dataOne = two.dataOne;
+        one.dataTwo = two.dataTwo;
+        one.obj = new Obj();
+        one.obj.dataOne = two.obj.dataOne;
+        one.obj.dataTwo = two.obj.dataTwo;
+
+    Car thr = new Car();
+        thr.dataOne = two.dataOne;
+        thr.dataTwo = two.dataTwo;
+        thr.obj = new Obj();
+        thr.obj.dataOne = two.obj.dataOne;
+        thr.obj.dataTwo = two.obj.dataTwo;
+
+    (-2-) Вторая часть проблемы скорее нотационная:
+
+    class Vehicle{}
+    class Car extends Vehicle{}
+    var copyFrom = new Car(10,20,30);
+    var array = new Vehicle[10];
+    for(int i = 0; i < array.length; i++)
+    {
+                   <-- было - без полиморфизма (а если это Bus extends Vehicle?)
+                       сценарий надуманый, конечно, и без полиморфизма тут вполне можно обойтись
+        array[i] = new Car(copyFrom);
+    }
+    for(int i = 0; i < array.length; i++)
+    {
+                   <-- стало - с полиморфизмом (copyFrom может смениться в run-time)
+                       тут может быть что угодно расширяющее Vehicle
+        array[i] = copyFrom.clone();
+    }
+
+    (-3-) Третья часть проблемы
+    воссоздаваемые объекты создаются в определенном месте
+    и не управляются как конфигурацией
+
+    {
+        Car copyFrom = new Car(10,20,30);
+        for()...
+    }
+    {
+        Car copyFrom ...    <- очевидно что это аналогичная машина,
+                               и она представляет собою чтото вроде конфигурации
+    }
+
+    --  Предлагаемое решение:
+    -------------------------
+    1. ввести конструктор по типу равному типу объекта
+    2. ввести метод clone() у потенциального прототипа, где реализовать уже
+       deep -или- shallow copy
+    3. ввести реестр часто раскопируемых объектов (сконфигурированых)
+
+    --  Итоговый вариант кода:
+    --------------------------
+    //
+    // - клонирование с заданием метода .clone:
+    //
+    class Vehicle
+        int one
+        int two
+        Vehicle(int one, int two)               -- обычный конструктор
+        {
+            this.one = one; this.two = two;
+        }
+        Vehicle(Vehicle vehicle)                -- конструктор копирования
+        {
+            this.one = vehicle.one;
+            this.two = vehicle.two;
+        }
+        Vehicle clone()                         -- новый объект из текущего
+        {
+            Vehicle newVehicle = new Vehicle(this);
+            return newVehicle;
+        }
+    class Car extends Vehicle
+        int three
+        Car(int one, int two, int three)
+        {
+            super(one,two);
+            this.three = three;
+        }
+        Car(Car car)
+        {
+            super(car);
+            this.three = car.three;
+        }
+        Car clone()
+        {
+            Car newCar = new Car(this);
+            return newCar;
+        }
+    //
+    // - хранение прототипов:
+    //
+    enum PrototypeType{ Car100, Car200, Car300 }
+    class PrototypeRegistry
+    {
+        HashMap<PrototypeType,Vehicle> prototypes = new HashMap<>();
+        PrototypeRegistry()
+        {
+            prototypes.put(Car100, new Car(100,100,100));
+            prototypes.put(Car200, new Car(200,200,200));
+            prototypes.put(car300, new Car(300,300,300));
+        }
+    }

@@ -1,0 +1,115 @@
+
+    Паттерн 12: BUILDER:
+------------------------
+    --  Описание паттерна:
+    ----------------------
+    Разделяет создание сложного объекта
+    и инициализацию его состояния так,
+    что одинаковый процесс построения
+    может создать объекты с разным состоянием.
+
+    Объекты создаются объектом, выполняющим роль построителя,
+    а типовые построения строятся объектом,
+    выполняющим роль директора.
+
+    --  Ситуация создающая проблему:
+    --------------------------------
+    есть объект автомобиль,
+    в нем есть параметры:
+        uid
+        color
+        manufacturer
+        xeGeometryModel
+        type
+        yearOfProduction
+        typeOfWheels
+    и еще 2 десятка параметров
+    и это все относиться реально к одному автомобилю
+
+    конструктор при этом приобретает просто монструозную
+    форму:
+    Car(int uid, String StringRGBColor, String manufacturer, String xeGeometryModel, String type,
+        int yearOfProduction, String typeOfWheels)
+
+    эти дело не ограничивается
+    при введении параметров вроде
+        isFourWheelDriven
+        fourWheelDrivenType
+    мы обнаруживаем, что такого рода параметры могут быть, а могут и не быть
+    в конструторе, отчего при вызове он начинает становиться еще страшнее - получая нули в виде параметров:
+        = new Car(100, "rgb(100,100,100)", "Opel", "Astra", null, 1984, null, false, null)
+
+    дальше при создании объектов автомобилей, доходим до ситуации, когда создается сотня
+    автомобилей и все что в них отличается это буквально идентификатор, а все остальные параметры остаются
+    прежними.
+
+    и часто приходится выпускать по 100 объектов одинаковых фордов синего цвета, то есть
+    единственный параметр, что отличается это цвет.
+
+    --  Предлагаемое решение:
+    -------------------------
+    Для решения проблемы создания объектов использовать специальный объект Билдер,
+    представленный или совсем отдельным объектом (в системе станет больше объектов):
+        CarBuilder carBuilder = new CarBuilder();
+        carBuilder
+            .uid(100)
+            .color("rgb(100,100,100)")
+            .manufacturer("Opel");
+        Car car = carBuilder.build();  <- сам объект будет создаваться тем же конструктором с нулями
+
+    Или работающим как инлайн, то есть будучи буквально частью объекта Car
+    (в системе останется столько же объектов, но выстраиваемый объект станет массивным):
+        Car fromCar = new Car();
+        fromCar
+            .uid(100)
+            .color("rgb(100,100,100)")
+            .manufacturer("Opel");
+        Car newCar = fromCar.build(); <- здесь по сути используется механика клонирования
+
+    В сценарии где используются типовые конфигурации, используем специальнный объект Директор,
+    в котором сценарии построения будут именованными методами:
+        Car[] redOpelCars = Director.buildRedOpel(number:100);
+        Car[] blueOpelCars = Director.buildBlueOpel(number:50);
+
+    директор также может быть инлайн, в этом случае не придется еще и передавать интерфейсы на сторону
+    ну и создание объектов и явление объектом - в ооп по сути не взаимоисключают друг друга
+    (вспомним тот же конструктор)
+
+    --  Итоговый вариант кода:
+    --------------------------
+    // не смотря на то, что инлайн билдер,директор являются более адекватной
+    // архитектурой, все таки представим в виде разых объектов, как указано в паттерне:
+
+    class Car
+        <- монструозный конструктор единственная проблема не инлайн паттерна
+        Car(int uid, String StringRGBColor)
+
+    interface BuilderInterface
+        BuilderInterface uid(int uid)
+        BuilderInterface color(String color)
+        Car build()
+
+    interface DirectorInterface
+        Car[] buildBlueOpelCars(int number)
+
+    class Builder implements BuilderInterface
+            int uid
+            String color            <- заполняются переменные билдера
+            --
+            BuilderInterface uid(int uid) {this.uid = uid; return this;}
+            BuilderInterface color(String color) {this.color = color; return this;}
+            Car build() {return new Car(uid,color);}
+
+    class Director implements DirectorInterface
+        Car[] buildBlueOpelCars(int number)
+        {
+            Car[] cars = new Car[number];
+            Builder builder = new Builder();
+            builder.color("blue");
+            for(int i = 0; i < number; i++)
+            {
+                builder.uid(i);         <- видно, что манипуляции билдером более просты
+                cars[i] = builder.build();
+            }
+            return cars;
+        }
